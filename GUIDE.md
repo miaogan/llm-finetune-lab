@@ -164,6 +164,30 @@ ollama create my-model -f models\Qwen3-4B-finetuned-ollama\Modelfile
 ollama run my-model
 ```
 
+### 4.1 接入 LM Studio（GGUF 格式）
+
+LM Studio 只认 GGUF 格式，需要三步转换链（已验证可用）：
+
+```powershell
+# ① 合并 LoRA 为标准 bf16 完整模型（产物在 checkpoint-N-merged/ 子目录）
+python D:\work_space\llm-finetune-lab\scripts\py\export.py
+
+# ② 转 GGUF（Q8_0 量化，约 4.3GB；llama.cpp 仓库已克隆到项目内）
+cd D:\work_space\llm-finetune-lab\llama.cpp
+..\.venv\Scripts\python.exe convert_hf_to_gguf.py "..\outputs\qwen3_4b_qlora_sft\vN-时间戳\checkpoint-N-merged" --outfile "..\models\gguf\Qwen3-4B-finetuned-Q8_0.gguf" --outtype q8_0
+cd ..
+
+# ③ 复制到 LM Studio 模型目录（publisher/模型名/文件 三层结构）
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.lmstudio\models\miaogan\qwen3-4b-finetuned" | Out-Null
+Copy-Item "models\gguf\Qwen3-4B-finetuned-Q8_0.gguf" "$env:USERPROFILE\.lmstudio\models\miaogan\qwen3-4b-finetuned\"
+```
+
+然后打开 LM Studio，顶部搜索框输入 `qwen3-4b-finetuned` 即可找到并加载对话（聊天模板已内嵌在 GGUF 里）。
+
+> 量化档位参考：Q8_0 约 4.3GB 质量几乎无损（推荐）；想更小可改 `--outtype q8_0` 为下载 llama.cpp release 用 `llama-quantize` 做 Q4_K_M（约 2.5GB）。
+> 注意：`models/Qwen3-4B-finetuned/`（export.py 的默认输出）是 bnb 4bit 量化格式，仅供 transformers 低显存推理，**不能**用于 GGUF 转换——转换请用 `checkpoint-N-merged/` 目录。
+> **完整原理说明、checkpoint-400 备选导出、踩坑记录见 `EXPORT.md`。**
+
 ---
 
 ## 5. 使用自有数据

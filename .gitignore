@@ -7,6 +7,9 @@ __pycache__/
 models/*/
 !models/.gitkeep
 
+# llama.cpp source repo (for HF -> GGUF conversion, see README)
+llama.cpp/
+
 # Datasets (large files, ~285MB, download via scripts/py/download_dataset.py)
 # 保留 dataset_info.json 注册表与 demo 示例数据，忽略大数据集本体
 data/coig-cqia/

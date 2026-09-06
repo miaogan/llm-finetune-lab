@@ -56,7 +56,8 @@ llm-finetune-lab/
 │   └── webui.py                        # 启动可视化训练界面
 ├── pip.ini                         # 项目专用 pip 源（清华源）
 ├── README.md                        # 本文件：完整使用指南
-└── GUIDE.md                         # CLI 速查手册（配合本文件使用）
+├── GUIDE.md                         # CLI 速查手册（配合本文件使用）
+└── EXPORT.md                        # 模型导出与部署详解（原理+实操+踩坑记录）
 ```
 
 ## 新手完整流程（五步走）

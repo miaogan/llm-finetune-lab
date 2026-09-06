@@ -17,6 +17,7 @@ DEFAULT_OUTPUT_DIR = "outputs/qwen3_4b_qlora_sft"
 DEFAULT_MERGED_DIR = "models/Qwen3-4B-finetuned"
 
 MARKER = "args.json"
+ADAPTER_WEIGHTS = ("adapter_model.safetensors", "adapter_model.bin")
 
 
 def resolve(path):
@@ -31,7 +32,15 @@ def swift_cli():
 
 
 def _is_adapter(path):
-    return os.path.isdir(path) and os.path.exists(os.path.join(path, MARKER))
+    """真 adapter 目录须同时含 args.json 和 LoRA 权重文件。
+
+    注意：ms-swift 的版本目录（vN-时间戳/）顶层也有 args.json（训练参数快照），
+    但 LoRA 权重在它的 checkpoint-N/ 子目录里；只查 args.json 会把版本目录误判
+    成 adapter，导致 swift export 报 "not an adapter"。
+    """
+    if not (os.path.isdir(path) and os.path.exists(os.path.join(path, MARKER))):
+        return False
+    return any(os.path.exists(os.path.join(path, w)) for w in ADAPTER_WEIGHTS)
 
 
 def find_adapters(root):
