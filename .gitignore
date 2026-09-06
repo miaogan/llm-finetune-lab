@@ -1,0 +1,20 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Models (large files, ~8GB, download via scripts/py/download_model.py)
+models/*/
+!models/.gitkeep
+
+# Datasets (large files, ~285MB, download via scripts/py/download_dataset.py)
+# 保留 dataset_info.json 注册表与 demo 示例数据，忽略大数据集本体
+data/coig-cqia/
+
+# Training outputs (LoRA adapters, logs, tensorboard)
+outputs/
+
+# IDE / OS
+.idea/
+.vscode/
+Thumbs.db

@@ -1,0 +1,50 @@
+[
+  {
+    "dataset_name": "demo_selfcognition",
+    "dataset_path": "demo_selfcognition.json"
+  },
+  {
+    "dataset_name": "coig_cqia_full",
+    "dataset_path": "coig-cqia/COIG-CQIA-full.jsonl"
+  },
+  {
+    "dataset_name": "coig_cqia_zhihu",
+    "dataset_path": "coig-cqia/zhihu/zhihu_score9.0-10_clean_v10.jsonl"
+  },
+  {
+    "dataset_name": "coig_cqia_wikihow",
+    "dataset_path": "coig-cqia/wikihow/wikihow.jsonl"
+  },
+  {
+    "dataset_name": "coig_cqia_exam",
+    "dataset_path": "coig-cqia/exam/coig_exam_sampled_clean_v3.jsonl"
+  },
+  {
+    "dataset_name": "coig_cqia_medicine",
+    "dataset_path": "coig-cqia/wiki/bkmy_medicine.jsonl"
+  },
+  {
+    "dataset_name": "coig_cqia_poem",
+    "dataset_path": "coig-cqia/chinese_traditional/poem.jsonl"
+  },
+  {
+    "dataset_name": "coig_cqia_chengyu",
+    "dataset_path": "coig-cqia/chinese_traditional/chengyu.jsonl"
+  },
+  {
+    "dataset_name": "coig_cqia_ruozhiba",
+    "dataset_path": "coig-cqia/ruozhiba/ruozhiba_ruozhiba.jsonl"
+  },
+  {
+    "dataset_name": "coig_cqia_segmentfault",
+    "dataset_path": "coig-cqia/segmentfault/segmentfault_upvote5_clean.jsonl"
+  },
+  {
+    "dataset_name": "coig_cqia_zhihu_expansion",
+    "dataset_path": "coig-cqia/zhihu/zhihu_expansion.jsonl"
+  },
+  {
+    "dataset_name": "coig_cqia_xhs",
+    "dataset_path": "coig-cqia/xhs/xhs.jsonl"
+  }
+]

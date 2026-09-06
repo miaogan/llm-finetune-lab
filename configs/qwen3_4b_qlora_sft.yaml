@@ -1,0 +1,86 @@
+###
+### QLoRA (4-bit) SFT 配置 —— Qwen3-4B-Instruct-2507 @ RTX 4070 8GB
+### 训练命令: swift sft configs/qwen3_4b_qlora_sft.yaml
+### （ms-swift 直接把 YAML 作为位置参数传入，键名 = 命令行参数名去掉 "--"）
+###
+### 新手提示：日常训练只需要改 `dataset:` 一行，其他保持默认即可。
+###
+
+### 环境变量：缓解 8GB 显存下的碎片化 OOM（不要删）
+ENV:
+  PYTORCH_CUDA_ALLOC_CONF: 'expandable_segments:True'
+
+### ───────────────────────── 模型 ─────────────────────────
+# 基座模型路径（相对项目根目录；换模型先跑 download_model.py 再改这里）
+model: models/Qwen3-4B-Instruct-2507
+# 计算精度：bfloat16 = 显卡原生支持的半精度，速度快且省显存
+torch_dtype: bfloat16
+# Windows 无 flash-attn 预编译包，显式走 SDPA（官方内置注意力实现，效果等价）
+attn_impl: sdpa
+# 用本地模型路径训练，关闭联网校验模型文件（本地文件已齐全，跳过可加快启动）
+check_model: false
+# template 不写：ms-swift 会按 config.json 的 architectures 自动匹配 Qwen3 模板
+
+### ───────────────────────── 微调方法 ─────────────────────────
+# LoRA 原理：冻结基座模型，只在旁边挂一层很小的可训练矩阵（"补丁"），
+# 训练只更新补丁参数（几十 MB），而不是整个模型（8GB）。
+tuner_backend: peft        # 用 peft 库实现（HuggingFace 官方 LoRA 实现）
+tuner_type: lora           # 微调类型：LoRA
+target_modules: all-linear # 对所有线性层挂 LoRA 补丁（效果全面，默认推荐）
+lora_rank: 8               # 补丁"容量"：8 够用；数据量大/任务复杂可升 16/32（显存略增）
+lora_alpha: 16             # 补丁输出缩放系数，惯例 = 2×rank，无需改
+lora_dropout: 0.05         # 训练时随机丢弃 5% 补丁输出，防过拟合，无需改
+
+### ───────────────────────── 4bit 量化（QLoRA 核心）─────────────────────────
+# QLoRA 原理：把冻结的基座压缩成 4bit 存储，显存占用降到约 1/4，
+# 这是 8GB 显存能微调 4B 模型的关键。只影响训练时的基座存储，不影响最终合并产物。
+quant_method: bnb                  # 量化库：bitsandbytes
+quant_bits: 4                      # 量化位数：4bit
+bnb_4bit_quant_type: nf4           # 量化格式：nf4（对正态分布权重更友好，标准选择）
+bnb_4bit_compute_dtype: bfloat16   # 计算时反量化回的精度
+bnb_4bit_use_double_quant: true    # 双重量化：量化参数本身也量化，再省一点显存
+
+### ───────────────────────── 数据集 ─────────────────────────
+# ★ 日常训练主要改这里。可选值见 data/dataset_info.json：
+#   demo_selfcognition（30 条试跑）/ coig_cqia_zhihu / coig_cqia_wikihow /
+#   coig_cqia_exam / coig_cqia_full（4.5 万条全量）等
+# 采样写法：coig_cqia_zhihu#500 = 只取 500 条（快速试验用）
+# 也可直接写本地文件路径：data/my_data.jsonl
+custom_dataset_info: data/dataset_info.json
+dataset: demo_selfcognition
+
+max_length: 1024          # 单条样本最大 token 数；OOM 时降到 512
+truncation_strategy: delete  # 超长样本直接丢弃（比截断更省显存）；想截断改 left/right
+dataset_num_proc: 4       # 数据预处理并行数
+load_from_cache_file: false  # 大数据集（如 coig_cqia_full）可改 true 复用预处理缓存提速
+
+### ───────────────────────── 输出 ─────────────────────────
+# 产物落在 outputs/qwen3_4b_qlora_sft/vN-<时间戳>/checkpoint-N/ 下
+# chat.py / export.py 会自动找最新的，无需手工记录路径
+output_dir: outputs/qwen3_4b_qlora_sft
+add_version: true         # 每次训练建带时间戳的子目录，不覆盖历史结果（保持默认）
+logging_steps: 10         # 每 10 步打印一次 loss（看训练是否正常的关键窗口）
+save_steps: 200           # 每 200 步存一个 checkpoint（断点续训的粒度）
+save_total_limit: 3       # 磁盘上最多保留 3 个 checkpoint，旧的自动删
+report_to: tensorboard    # 日志后端；配 images/ 下的 png 曲线一起看
+
+### ───────────────────────── 训练超参（8GB 显存调优）─────────────────────────
+per_device_train_batch_size: 1   # 每步喂 1 条样本（显存所限，保持 1）
+per_device_eval_batch_size: 1
+gradient_accumulation_steps: 8   # 梯度累积 8 步再更新一次 → 等效 batch=8（省显存的关键技巧）
+learning_rate: 1.0e-4            # 学习率：每步更新的"步幅"。
+                                 #   loss 飙升/震荡 → 调小（5e-5）；loss 不动 → 可到 2e-4
+num_train_epochs: 3.0            # 全量数据过 3 遍。指令微调 1~3 轮足够；过拟合（对话变机械）就减少
+lr_scheduler_type: cosine        # 学习率调度：先热身后余弦衰减到 0（标准做法）
+warmup_ratio: 0.1                # 前 10% 步数用小学习率热身，防止开头学崩
+gradient_checkpointing: true     # 用重算换显存（慢约 30% 但省一半显存，8GB 必开）
+dataloader_num_workers: 0        # Windows 必须为 0（官方要求，非 0 会报错）
+
+### ───────────────────────── 评估 ─────────────────────────
+split_dataset_ratio: 0.1   # 自动划 10% 数据当验证集，不参与训练
+eval_strategy: steps       # 按步数评估
+eval_steps: 200            # 每 200 步在验证集上算一次 eval_loss
+
+### ───────────────────────── 断点续训（需要时取消注释）─────────────────────────
+# 训练中断后，取消下行注释并改成实际存在的 checkpoint 路径，重新运行 train.py 即可续训：
+# resume_from_checkpoint: outputs/qwen3_4b_qlora_sft/v2-20260906-151227/checkpoint-400

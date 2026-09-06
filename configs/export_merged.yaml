@@ -1,0 +1,43 @@
+###
+### 导出合并配置 —— 将 LoRA 适配器合并进基座模型，得到可独立部署的完整权重
+### 导出命令: swift export configs/export_merged.yaml
+###
+### 什么是"合并"？训练产出的是 LoRA 补丁（几十 MB），必须叠加在基座模型上才能用。
+### 合并 = 把补丁的改动直接写进基座权重，产出一个普通的完整模型（约 8GB），
+### 之后可直接给 transformers / vLLM / Ollama 加载，不再需要基座和补丁。
+###
+### adapters 指向 swift 训练产生的 checkpoint 目录，其中含 args.json，
+### 基座模型、template、量化设置都会自动读回，因此这里无需再写 model。
+###
+
+### ───────────────────────── LoRA 适配器路径 ─────────────────────────
+# ⚠️ 训练配置开了 add_version，产物实际落在带版本号的子目录里，例如：
+#      outputs/qwen3_4b_qlora_sft/v2-20260906-151227/checkpoint-400
+#    这里必须写完整的 checkpoint 路径，只写 outputs/qwen3_4b_qlora_sft 会找不到 args.json。
+#
+# 推荐做法：不要直接用本文件，而是运行
+#      python scripts/py/export.py
+# 脚本会自动探测最新 checkpoint 并显式传入输出目录，省去手工改路径。
+# 本文件保留给「swift export configs/export_merged.yaml」这种直接调用方式，
+# 注意每次新训练后需把 adapters 更新为最新 checkpoint 的完整路径。
+adapters: outputs/qwen3_4b_qlora_sft/v1-20260906-150321/checkpoint-12
+
+# 执行合并（true = 导出完整模型；false = 仅复制 adapter）
+merge_lora: true
+
+### ───────────────────────── 输出 ─────────────────────────
+# 合并结果输出目录（相对项目根目录；export.py 也会显式传该参数）
+output_dir: models/Qwen3-4B-finetuned
+
+### 单个权重分片大小（5GB 以内方便复制移动）与序列化格式（safetensors 更安全）
+max_shard_size: 2GB
+safe_serialization: true
+
+### ───────────────────────── 接入 Ollama（可选）─────────────────────────
+### 合并后的完整权重可直接给 transformers / vLLM 加载。
+### 想在 Ollama 本地运行：取消下面两行注释 → 重新跑 export → 生成的目录带 Modelfile，
+### 然后执行：
+###   ollama create my-model -f models\Qwen3-4B-finetuned-ollama\Modelfile
+###   ollama run my-model
+# to_ollama: true
+# output_dir: models/Qwen3-4B-finetuned-ollama
