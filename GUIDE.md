@@ -221,7 +221,37 @@ dataset: data/my_data.jsonl
 
 ---
 
-## 6. 可视化训练 / 辅助命令
+## 6. 检索模型微调（embedding + rerank）
+
+> 详细教程见 `README.md` 检索章节。基座模型在 `models/BAAI/`，框架 FlagEmbedding（已装进 `.venv`）。
+
+```powershell
+# ① 构造三元组数据（query/pos/neg，约 9.6k 条；需先下载 COIG-CQIA）
+python D:\work_space\llm-finetune-lab\scripts\py\build_retrieval_data.py
+
+# ② 微调 embedding（bge-large-zh-v1.5，对比学习，约 30~50 分钟）
+python D:\work_space\llm-finetune-lab\scripts\py\train_embedding.py
+
+# ③ 微调 rerank（bge-reranker-base，listwise 交叉熵，约 30~50 分钟）
+python D:\work_space\llm-finetune-lab\scripts\py\train_rerank.py
+
+# ④ 评估微调前后效果（Recall@1/@5/@10、MRR、召回+精排链路）
+python D:\work_space\llm-finetune-lab\scripts\py\eval_retrieval.py
+
+# ⑤ 迷你 RAG 演示（召回 top5 + 精排）
+python D:\work_space\llm-finetune-lab\scripts\py\retrieval_demo.py 感冒了怎么办
+```
+
+| 产物路径 | 内容 |
+|---|---|
+| `outputs/bge-large-zh-ft/` | 微调后 embedding 模型（最终权重在最后一个 checkpoint） |
+| `outputs/bge-reranker-ft/` | 微调后 rerank 模型（同上） |
+
+显存要点（8GB 卡实测）：两者都用 `adamw_bnb_8bit` 8-bit 优化器 + 小 batch 大累积；rerank 额外开梯度检查点和 `sub_batch_size=2`。embedding 约 5GB、rerank 约 4GB。
+
+---
+
+## 7. 可视化训练 / 辅助命令
 
 ```powershell
 # Web-UI（界面训练/推理，后台另起进程，关界面不中断训练；停训在 Runtime 页 kill service）
@@ -245,6 +275,11 @@ python D:\work_space\llm-finetune-lab\scripts\py\setup_env.py
 | 训练 | `python scripts\py\train.py` |
 | 对话 | `python scripts\py\chat.py` |
 | 导出合并 | `python scripts\py\export.py` |
+| 构造检索数据 | `python scripts\py\build_retrieval_data.py` |
+| 微调 embedding | `python scripts\py\train_embedding.py` |
+| 微调 rerank | `python scripts\py\train_rerank.py` |
+| 评估检索效果 | `python scripts\py\eval_retrieval.py` |
+| RAG 检索演示 | `python scripts\py\retrieval_demo.py` |
 | Web-UI | `python scripts\py\webui.py` |
 | 看训练曲线 | `.venv\Scripts\tensorboard.exe --logdir outputs\qwen3_4b_qlora_sft` |
 

@@ -14,6 +14,11 @@ llama.cpp/
 # 保留 dataset_info.json 注册表与 demo 示例数据，忽略大数据集本体
 data/coig-cqia/
 
+# Retrieval training data (large files, ~70MB, rebuild via scripts/py/build_retrieval_data.py)
+# 保留 *_demo.jsonl 小样本（各 100 条，格式参考/快速试跑用）
+data/retrieval/train.jsonl
+data/retrieval/eval.jsonl
+
 # Training outputs (LoRA adapters, logs, tensorboard)
 outputs/
 
